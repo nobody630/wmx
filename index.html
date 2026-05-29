@@ -1684,7 +1684,7 @@
           <div class="stage">
             <div class="photo">
               <div class="photoCard fadeIn" id="photoCard">
-                <img id="mainImg" alt="照片" decoding="async" />
+                <img id="mainImg" alt="照片" decoding="async" fetchpriority="high" />
               </div>
               <div class="captionBox fadeIn">
                 <div class="badge"><span id="badgeText">1 / 23</span></div>
@@ -2305,47 +2305,45 @@
           const finish = (ok) => {
             if (settled) return;
             settled = true;
+            clearTimeout(timer);
             resolve(ok);
           };
 
-          const img = new Image();
-
-          const apply = async () => {
-            if (settled) return;
-            if (renderId !== slideRenderId) {
-              finish(false);
-              return;
-            }
-            if (!img.naturalWidth) {
-              finish(false);
-              return;
-            }
+          const timer = setTimeout(() => {
+            if (renderId !== slideRenderId) return finish(false);
             els.mainImg.src = src;
             els.mainImg.alt = slides[state.index]?.title || "照片";
-            try {
-              if (els.mainImg.decode) await els.mainImg.decode();
-            } catch {}
-            if (renderId !== slideRenderId) {
-              finish(false);
-              return;
-            }
+            preloadedImages.add(src);
+            finish(true);
+          }, 6000);
+
+          const img = new Image();
+
+          const onSuccess = () => {
+            if (settled) return;
+            if (renderId !== slideRenderId) return finish(false);
+            if (!img.naturalWidth) return finish(false);
+            els.mainImg.src = src;
+            els.mainImg.alt = slides[state.index]?.title || "照片";
             preloadedImages.add(src);
             finish(true);
           };
 
-          img.onload = () => apply();
-          img.onerror = () => {
-            if (renderId !== slideRenderId) {
-              finish(false);
-              return;
-            }
-            els.mainImg.removeAttribute("src");
+          const onFail = () => {
+            if (settled) return;
+            if (renderId !== slideRenderId) return finish(false);
             showToast("这张照片加载失败，请检查网络或文件路径");
             finish(false);
           };
 
+          img.onload = onSuccess;
+          img.onerror = onFail;
           img.src = src;
-          if (img.complete) apply();
+
+          if (img.complete) {
+            if (img.naturalWidth) onSuccess();
+            else onFail();
+          }
         });
       }
 
@@ -2384,6 +2382,7 @@
           if (ok) {
             animateCardOnce();
             prefetchSlideImage(state.index + 1);
+            prefetchSlideImage(state.index + 2);
           }
         } finally {
           if (renderId === slideRenderId) {
