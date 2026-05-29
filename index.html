@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="max-age=2592000, public" />
+    <meta http-equiv="Pragma" content="cache" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <title>生日快乐</title>
     <style>
       :root {
@@ -208,9 +212,21 @@
         position: absolute;
         inset: 16px;
         border-radius: 8px;
-        background: rgba(255, 240, 245, 0.55);
+        background: linear-gradient(
+          90deg,
+          rgba(255, 240, 245, 0.55) 25%,
+          rgba(255, 255, 255, 0.85) 50%,
+          rgba(255, 240, 245, 0.55) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
         z-index: 2;
         pointer-events: none;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
       .photoCard.loading::after {
@@ -1287,6 +1303,25 @@
         letter-spacing: 1px;
       }
 
+      .loader-progress {
+        margin-top: 12px;
+        width: 200px;
+        height: 6px;
+        background: rgba(255, 182, 193, 0.3);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .loader-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #ff85a2, #ff3d93);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
       .sr {
         position: absolute;
         width: 1px;
@@ -1645,6 +1680,9 @@
       <div class="loader-content">
         <div class="heart-loader">❤️</div>
         <div class="loader-text" id="loaderText">正在加载中...</div>
+        <div class="loader-progress">
+          <div class="loader-progress-bar" id="loaderProgressBar"></div>
+        </div>
       </div>
     </div>
     <div class="music-ctrl" id="musicCtrl" style="display: none;">
@@ -1905,6 +1943,7 @@
         bgm: document.getElementById("bgm"),
         loaderMask: document.getElementById("loaderMask"),
         loaderText: document.getElementById("loaderText"),
+        loaderProgressBar: document.getElementById("loaderProgressBar"),
         musicCtrl: document.getElementById("musicCtrl"),
         musicToggleBtn: document.getElementById("musicToggleBtn"),
         musicIcon: document.getElementById("musicIcon"),
@@ -1936,6 +1975,92 @@
 
       let slideRenderId = 0;
       const preloadedImages = new Set();
+      const preloadQueue = [];
+      let preloadActive = false;
+      const MAX_CONCURRENT_PRELOADS = 2; // 手机端减少并发数量
+      let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      let isSlowConnection = false;
+
+      // 检测网络状况
+      function checkNetworkStatus() {
+        if (navigator.connection) {
+          const conn = navigator.connection;
+          isSlowConnection = conn.saveData || conn.effectiveType.includes('2g') || conn.effectiveType.includes('slow-2g');
+          if (isSlowConnection) {
+            console.log('检测到慢速网络，调整加载策略');
+          }
+        }
+      }
+
+      function preloadAllImages() {
+        checkNetworkStatus();
+        // 手机端只预加载前 5 张，后续按需加载
+        const preloadCount = isMobile ? Math.min(5, slides.length) : slides.length;
+        for (let i = 0; i < preloadCount; i++) {
+          preloadQueue.push({ src: slides[i].img, index: i });
+        }
+        processPreloadQueue();
+      }
+
+      function processPreloadQueue() {
+        if (preloadActive || preloadQueue.length === 0) return;
+        preloadActive = true;
+
+        let loadedCount = 0;
+        const totalCount = preloadQueue.length;
+
+        const loadNext = () => {
+          if (preloadQueue.length === 0) {
+            preloadActive = false;
+            return;
+          }
+
+          const { src } = preloadQueue.shift();
+          if (preloadedImages.has(src)) {
+            loadedCount++;
+            updatePreloadProgress(loadedCount, totalCount);
+            loadNext();
+            return;
+          }
+
+          const img = new Image();
+          img.onload = () => {
+            preloadedImages.add(src);
+            loadedCount++;
+            updatePreloadProgress(loadedCount, totalCount);
+            loadNext();
+          };
+          img.onerror = () => {
+            preloadedImages.add(src);
+            loadedCount++;
+            updatePreloadProgress(loadedCount, totalCount);
+            loadNext();
+          };
+          img.src = src;
+        };
+
+        const concurrent = isSlowConnection ? 1 : MAX_CONCURRENT_PRELOADS;
+        for (let i = 0; i < concurrent; i++) {
+          loadNext();
+        }
+      }
+
+      function updatePreloadProgress(loaded, total) {
+        if (!els.loaderProgressBar) return;
+        const pct = Math.round((loaded / total) * 100);
+        els.loaderProgressBar.style.width = `${pct}%`;
+        if (els.loaderText && els.loaderText.textContent.includes('预加载')) {
+          els.loaderText.textContent = `正在预加载照片... ${loaded}/${total}`;
+        }
+      }
+
+      function preloadSlideRange(start, end) {
+        for (let i = start; i <= end; i++) {
+          if (i >= 0 && i < slides.length) {
+            prefetchSlideImage(i);
+          }
+        }
+      }
 
       /** 蛋糕页等持续特效的定时器，离开页面前必须清除 */
       const effectTimers = {
@@ -2301,6 +2426,14 @@
 
       function loadSlideImage(src, renderId) {
         return new Promise((resolve) => {
+          // 如果图片已预加载，直接显示
+          if (preloadedImages.has(src)) {
+            els.mainImg.src = src;
+            els.mainImg.alt = slides[state.index]?.title || "照片";
+            resolve(true);
+            return;
+          }
+
           let settled = false;
           const finish = (ok) => {
             if (settled) return;
@@ -2309,13 +2442,15 @@
             resolve(ok);
           };
 
+          // 手机端超时时间更短
+          const timeout = isMobile ? 3000 : 6000;
           const timer = setTimeout(() => {
             if (renderId !== slideRenderId) return finish(false);
             els.mainImg.src = src;
             els.mainImg.alt = slides[state.index]?.title || "照片";
             preloadedImages.add(src);
             finish(true);
-          }, 6000);
+          }, timeout);
 
           const img = new Image();
 
@@ -2323,10 +2458,25 @@
             if (settled) return;
             if (renderId !== slideRenderId) return finish(false);
             if (!img.naturalWidth) return finish(false);
-            els.mainImg.src = src;
-            els.mainImg.alt = slides[state.index]?.title || "照片";
-            preloadedImages.add(src);
-            finish(true);
+            
+            if (img.decode) {
+              img.decode().then(() => {
+                els.mainImg.src = src;
+                els.mainImg.alt = slides[state.index]?.title || "照片";
+                preloadedImages.add(src);
+                finish(true);
+              }).catch(() => {
+                els.mainImg.src = src;
+                els.mainImg.alt = slides[state.index]?.title || "照片";
+                preloadedImages.add(src);
+                finish(true);
+              });
+            } else {
+              els.mainImg.src = src;
+              els.mainImg.alt = slides[state.index]?.title || "照片";
+              preloadedImages.add(src);
+              finish(true);
+            }
           };
 
           const onFail = () => {
@@ -2381,8 +2531,11 @@
           if (renderId !== slideRenderId) return;
           if (ok) {
             animateCardOnce();
-            prefetchSlideImage(state.index + 1);
-            prefetchSlideImage(state.index + 2);
+            // 手机端预加载更多后续照片
+            const preloadCount = isMobile ? 3 : 2;
+            for (let i = 1; i <= preloadCount; i++) {
+              prefetchSlideImage(state.index + i);
+            }
           }
         } finally {
           if (renderId === slideRenderId) {
@@ -2459,6 +2612,8 @@
           const img = document.createElement("img");
           img.src = s.img;
           img.alt = s.title || "照片";
+          img.loading = "lazy";
+          img.decoding = "async";
 
           inner.appendChild(img);
           frame.appendChild(inner);
@@ -2905,8 +3060,7 @@
         } catch {}
         setStep("lock");
         if (slides.length > 0) {
-          prefetchSlideImage(0);
-          prefetchSlideImage(1);
+          preloadAllImages();
         }
       })();
     </script>
