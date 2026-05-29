@@ -1977,23 +1977,10 @@
       const preloadedImages = new Set();
       const preloadQueue = [];
       let preloadActive = false;
-      const MAX_CONCURRENT_PRELOADS = 3; // 增加并发数量
+      const MAX_CONCURRENT_PRELOADS = 6; // 大幅增加并发数量
       let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      let isSlowConnection = false;
-
-      // 检测网络状况
-      function checkNetworkStatus() {
-        if (navigator.connection) {
-          const conn = navigator.connection;
-          isSlowConnection = conn.saveData || conn.effectiveType.includes('2g') || conn.effectiveType.includes('slow-2g');
-          if (isSlowConnection) {
-            console.log('检测到慢速网络，调整加载策略');
-          }
-        }
-      }
 
       function preloadAllImages() {
-        checkNetworkStatus();
         // 预加载所有 23 张图片
         for (let i = 0; i < slides.length; i++) {
           preloadQueue.push({ src: slides[i].img, index: i });
@@ -2038,8 +2025,8 @@
           img.src = src;
         };
 
-        const concurrent = isSlowConnection ? 1 : MAX_CONCURRENT_PRELOADS;
-        for (let i = 0; i < concurrent; i++) {
+        // 不检查网络，直接全力加载
+        for (let i = 0; i < MAX_CONCURRENT_PRELOADS; i++) {
           loadNext();
         }
       }
@@ -2458,66 +2445,11 @@
             return;
           }
 
-          let settled = false;
-          const finish = (ok) => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            resolve(ok);
-          };
-
-          // 手机端超时时间更短
-          const timeout = isMobile ? 3000 : 6000;
-          const timer = setTimeout(() => {
-            if (renderId !== slideRenderId) return finish(false);
-            els.mainImg.src = src;
-            els.mainImg.alt = slides[state.index]?.title || "照片";
-            preloadedImages.add(src);
-            finish(true);
-          }, timeout);
-
-          const img = new Image();
-
-          const onSuccess = () => {
-            if (settled) return;
-            if (renderId !== slideRenderId) return finish(false);
-            if (!img.naturalWidth) return finish(false);
-            
-            if (img.decode) {
-              img.decode().then(() => {
-                els.mainImg.src = src;
-                els.mainImg.alt = slides[state.index]?.title || "照片";
-                preloadedImages.add(src);
-                finish(true);
-              }).catch(() => {
-                els.mainImg.src = src;
-                els.mainImg.alt = slides[state.index]?.title || "照片";
-                preloadedImages.add(src);
-                finish(true);
-              });
-            } else {
-              els.mainImg.src = src;
-              els.mainImg.alt = slides[state.index]?.title || "照片";
-              preloadedImages.add(src);
-              finish(true);
-            }
-          };
-
-          const onFail = () => {
-            if (settled) return;
-            if (renderId !== slideRenderId) return finish(false);
-            showToast("这张照片加载失败，请检查网络或文件路径");
-            finish(false);
-          };
-
-          img.onload = onSuccess;
-          img.onerror = onFail;
-          img.src = src;
-
-          if (img.complete) {
-            if (img.naturalWidth) onSuccess();
-            else onFail();
-          }
+          // 简化逻辑：直接设置图片，不等待解码
+          els.mainImg.src = src;
+          els.mainImg.alt = slides[state.index]?.title || "照片";
+          preloadedImages.add(src);
+          resolve(true);
         });
       }
 
@@ -3085,10 +3017,8 @@
         } catch {}
         setStep("lock");
         if (slides.length > 0) {
-          // 延迟预加载，让音乐先缓冲
-          setTimeout(() => {
-            preloadAllImages();
-          }, 500);
+          // 立即启动预加载，不延迟
+          preloadAllImages();
         }
       })();
     </script>
