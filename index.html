@@ -166,6 +166,27 @@
       @media (max-width: 768px) {
         .photo {
           grid-template-columns: 1fr;
+          padding: 16px;
+          gap: 14px;
+        }
+
+        .stage {
+          min-height: auto;
+        }
+
+        .captionBox {
+          max-height: min(42vh, 360px);
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          padding: 18px;
+        }
+
+        .captionBox h2 {
+          font-size: 20px;
+        }
+
+        .captionBox p {
+          font-size: 15px;
         }
       }
 
@@ -182,6 +203,36 @@
         box-shadow: 0 10px 30px rgba(255, 182, 193, 0.3);
       }
 
+      .photoCard.loading::before {
+        content: "";
+        position: absolute;
+        inset: 16px;
+        border-radius: 8px;
+        background: rgba(255, 240, 245, 0.55);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .photoCard.loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 36px;
+        height: 36px;
+        margin: -18px 0 0 -18px;
+        border: 3px solid rgba(255, 133, 162, 0.25);
+        border-top-color: #ff3d93;
+        border-radius: 50%;
+        animation: photoSpin 0.7s linear infinite;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      @keyframes photoSpin {
+        to { transform: rotate(360deg); }
+      }
+
       .photoCard img {
         width: 100%;
         height: auto;
@@ -190,6 +241,11 @@
         object-fit: cover;
         border-radius: 8px;
         filter: saturate(1.05) contrast(1.02);
+        transition: opacity 0.25s ease;
+      }
+
+      .photoCard.loading img {
+        opacity: 0.35;
       }
 
       .captionBox {
@@ -214,6 +270,8 @@
         letter-spacing: 0.2px;
         color: #ff3d93;
         text-shadow: 1px 1px 0 rgba(255,255,255,0.8);
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       .captionBox p {
@@ -221,6 +279,8 @@
         color: #5a3d46;
         line-height: 1.6;
         font-size: 16px;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       .badge {
@@ -1480,6 +1540,9 @@
 
       .wish-card {
         width: min(440px, 100%);
+        max-height: min(90vh, 520px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         background: rgba(255, 255, 255, 0.96);
         border-radius: var(--radius);
         border: 1px solid rgba(255, 182, 193, 0.7);
@@ -1503,6 +1566,7 @@
       .wish-card textarea {
         width: 100%;
         min-height: 100px;
+        max-height: min(36vh, 200px);
         resize: vertical;
         border: 2px solid var(--pink2);
         border-radius: 12px;
@@ -1529,7 +1593,9 @@
 
       .wish-memory {
         margin: 16px auto 0;
-        max-width: 520px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         padding: 14px 18px;
         background: rgba(255, 255, 255, 0.75);
         border: 1px dashed rgba(255, 61, 147, 0.45);
@@ -1537,6 +1603,8 @@
         text-align: left;
         position: relative;
         z-index: 2;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       .wish-memory-title {
@@ -1552,10 +1620,23 @@
         line-height: 1.7;
         font-size: 15px;
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
 
       .wish-memory.hidden {
         display: none;
+      }
+
+      .cake-final-words {
+        margin: 12px 0 0;
+        color: #ff3d93;
+        line-height: 1.7;
+        font-size: 18px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
     </style>
   </head>
@@ -1603,7 +1684,7 @@
           <div class="stage">
             <div class="photo">
               <div class="photoCard fadeIn" id="photoCard">
-                <img id="mainImg" alt="照片" />
+                <img id="mainImg" alt="照片" decoding="async" />
               </div>
               <div class="captionBox fadeIn">
                 <div class="badge"><span id="badgeText">1 / 23</span></div>
@@ -1678,12 +1759,12 @@
               <div class="plate" aria-hidden="true"></div>
             </div>
           </div>
-          <div style="padding: 0 18px 20px; text-align: center; position: relative; z-index: 1;">
+          <div class="cake-footer" style="padding: 0 18px 20px; text-align: center; position: relative; z-index: 1; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">
             <div class="wish-memory hidden" id="wishMemory" aria-live="polite">
               <div class="wish-memory-title">🎋 你许下的愿望</div>
               <p class="wish-memory-text" id="wishMemoryText"></p>
             </div>
-            <p id="finalWords" style="margin: 0; color: #ff3d93; line-height: 1.7; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);"></p>
+            <p id="finalWords" class="cake-final-words"></p>
           </div>
         </section>
       </div>
@@ -1849,8 +1930,12 @@
         index: 0,
         summaryStacked: false,
         toastTimer: null,
-        letterTyping: false
+        letterTyping: false,
+        slideLoading: false
       };
+
+      let slideRenderId = 0;
+      const preloadedImages = new Set();
 
       /** 蛋糕页等持续特效的定时器，离开页面前必须清除 */
       const effectTimers = {
@@ -2204,7 +2289,73 @@
         els.photoCard.classList.add("fadeIn");
       }
 
-      function renderSlide() {
+      function prefetchSlideImage(index) {
+        if (index < 0 || index >= slides.length) return;
+        const src = slides[index].img;
+        if (preloadedImages.has(src)) return;
+        const img = new Image();
+        img.onload = () => preloadedImages.add(src);
+        img.onerror = () => preloadedImages.add(src);
+        img.src = src;
+      }
+
+      function loadSlideImage(src, renderId) {
+        return new Promise((resolve) => {
+          let settled = false;
+          const finish = (ok) => {
+            if (settled) return;
+            settled = true;
+            resolve(ok);
+          };
+
+          const img = new Image();
+
+          const apply = async () => {
+            if (settled) return;
+            if (renderId !== slideRenderId) {
+              finish(false);
+              return;
+            }
+            if (!img.naturalWidth) {
+              finish(false);
+              return;
+            }
+            els.mainImg.src = src;
+            els.mainImg.alt = slides[state.index]?.title || "照片";
+            try {
+              if (els.mainImg.decode) await els.mainImg.decode();
+            } catch {}
+            if (renderId !== slideRenderId) {
+              finish(false);
+              return;
+            }
+            preloadedImages.add(src);
+            finish(true);
+          };
+
+          img.onload = () => apply();
+          img.onerror = () => {
+            if (renderId !== slideRenderId) {
+              finish(false);
+              return;
+            }
+            els.mainImg.removeAttribute("src");
+            showToast("这张照片加载失败，请检查网络或文件路径");
+            finish(false);
+          };
+
+          img.src = src;
+          if (img.complete) apply();
+        });
+      }
+
+      function setSlideLoading(loading) {
+        state.slideLoading = loading;
+        els.photoCard.classList.toggle("loading", loading);
+        els.nextBtn.disabled = loading;
+      }
+
+      async function renderSlide() {
         if (slides.length === 0) {
           els.captionTitle.textContent = "还没有照片";
           els.captionText.textContent = "请先在 CONFIG 里配置 photoFileNames 和 slides。";
@@ -2214,10 +2365,10 @@
           return;
         }
 
+        const renderId = ++slideRenderId;
         state.index = Math.max(0, Math.min(state.index, slides.length - 1));
         const s = slides[state.index];
-        els.mainImg.src = s.img;
-        els.mainImg.alt = s.title || "照片";
+
         els.captionTitle.textContent = s.title || "这一刻";
         els.captionText.textContent = s.text || "";
         updateHeader();
@@ -2225,7 +2376,20 @@
         const isLast = state.index === slides.length - 1;
         els.nextBtn.textContent = isLast ? "完成" : "下一页";
 
-        animateCardOnce();
+        setSlideLoading(true);
+
+        try {
+          const ok = await loadSlideImage(s.img, renderId);
+          if (renderId !== slideRenderId) return;
+          if (ok) {
+            animateCardOnce();
+            prefetchSlideImage(state.index + 1);
+          }
+        } finally {
+          if (renderId === slideRenderId) {
+            setSlideLoading(false);
+          }
+        }
       }
 
       function randomBetween(min, max) {
@@ -2637,18 +2801,18 @@
         await crossfadeTo(CONFIG.musicSrc);
       }
 
-      function next() {
-        if (slides.length === 0) return;
+      async function next() {
+        if (slides.length === 0 || state.slideLoading) return;
         if (state.index >= slides.length - 1) {
           setStep("summary");
           runDeskStackOnce();
           return;
         }
         state.index += 1;
-        renderSlide();
+        await renderSlide();
       }
 
-      els.nextBtn.addEventListener("click", next);
+      els.nextBtn.addEventListener("click", () => next());
       els.partyBtn.addEventListener("click", startParty);
       els.backToStartBtn.addEventListener("click", restart);
       els.backToStartBtn2.addEventListener("click", restart);
@@ -2670,7 +2834,7 @@
       });
 
       els.mainImg.addEventListener("error", () => {
-        els.mainImg.removeAttribute("src");
+        if (state.slideLoading) return;
         showToast("这张照片路径没找到：请把文件放到 assets/photos/ 或修改 CONFIG");
       });
 
@@ -2741,11 +2905,9 @@
           localStorage.removeItem("hb_progress_v1");
         } catch {}
         setStep("lock");
-        renderSlide();
-
         if (slides.length > 0) {
-          const pre = new Image();
-          pre.src = slides[0].img;
+          prefetchSlideImage(0);
+          prefetchSlideImage(1);
         }
       })();
     </script>
