@@ -1673,6 +1673,99 @@
         overflow-wrap: break-word;
         word-break: break-word;
       }
+
+      /* ========== 手机端响应式设计 ========== */
+      @media (max-width: 768px) {
+        /* 爱心照片 - 手机端优化 */
+        .polaroid {
+          width: min(100px, 22vw);
+          padding: 6px 6px 18px 6px;
+        }
+
+        /* 照片墙 - 手机端优化 */
+        .wallGrid {
+          padding: 12px 8px;
+          gap: 8px;
+        }
+        
+        .frame {
+          padding: 6px;
+          border-radius: 10px;
+        }
+        
+        .frameInner img {
+          height: 90px;
+        }
+
+        /* 蛋糕场景 - 手机端优化 */
+        .cakeScene.active {
+          padding: 16px 12px 20px;
+          gap: 12px;
+        }
+
+        .cakeWrap {
+          padding: 12px 4px 4px;
+        }
+
+        .cake {
+          width: min(320px, 94vw);
+          height: 280px;
+        }
+
+        .age-sign {
+          bottom: 260px;
+          font-size: 36px;
+        }
+
+        .age-sign::after {
+          bottom: -12px;
+          height: 16px;
+        }
+
+        .cake-final-words {
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .sceneTop h2 {
+          font-size: 20px;
+        }
+
+        .sceneTop p {
+          font-size: 13px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        /* 小屏手机进一步优化 */
+        .polaroid {
+          width: min(80px, 20vw);
+          padding: 5px 5px 14px 5px;
+        }
+
+        .wallGrid {
+          padding: 10px 6px;
+          gap: 6px;
+        }
+        
+        .frameInner img {
+          height: 75px;
+        }
+
+        .cake {
+          width: min(280px, 96vw);
+          height: 240px;
+        }
+
+        .age-sign {
+          bottom: 220px;
+          font-size: 28px;
+        }
+
+        .cake-final-words {
+          font-size: 13px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1834,7 +1927,7 @@
       </div>
     </div>
 
-    <audio id="bgm" preload="metadata" crossorigin="anonymous"></audio></audio>
+    <audio id="bgm" preload="auto"></audio>
 
     <script>
       const CONFIG = {
@@ -2150,7 +2243,6 @@
         audio.loop = true;
         audio.currentTime = 0;
         audio.volume = 0;
-        audio.bufferSize = 4096; // 增加缓冲区大小
 
         try {
           await audio.play();
@@ -2168,26 +2260,7 @@
 
       // 优化音乐播放的辅助函数
       function optimizeAudioPlayback() {
-        const audio = els.bgm;
-        // 设置更好的音频属性
-        audio.crossOrigin = "anonymous";
-        audio.preload = "auto";
-        
-        // 添加缓冲事件监听
-        audio.addEventListener("waiting", () => {
-          console.log("音频正在缓冲...");
-        });
-        
-        audio.addEventListener("canplaythrough", () => {
-          console.log("音频缓冲完成，可以流畅播放");
-        });
-        
-        audio.addEventListener("stalled", () => {
-          console.log("音频播放中断，正在重试...");
-          if (!audio.paused) {
-            audio.play().catch(() => {});
-          }
-        });
+        // 不做额外修改，保持原有稳定性
       }
 
       function showToast(message) {
@@ -2616,7 +2689,9 @@
         // Generate heart shape coordinates for 23 photos - constrained to fit in the pile area
         const heartCoords = [];
         const n = 23;
-        const scaleBase = 15; // Adjusted scale to fit within the smaller desk area
+        // 根据屏幕宽度调整缩放比例，手机端更小
+        const isMobileScreen = window.innerWidth <= 768;
+        const scaleBase = isMobileScreen ? 10 : 15; // 手机端用10，电脑端用15
         
         for (let i = 0; i < n; i++) {
           const t = (i / n) * 2 * Math.PI;
@@ -2639,8 +2714,9 @@
             x = heartCoords[i].x;
             y = heartCoords[i].y;
           } else {
-            x = randomBetween(-80, 80);
-            y = randomBetween(-60, 40);
+            // 手机端随机范围更小
+            x = isMobileScreen ? randomBetween(-60, 60) : randomBetween(-80, 80);
+            y = isMobileScreen ? randomBetween(-45, 30) : randomBetween(-60, 40);
           }
           
           polaroid.style.setProperty("--r", `${randomBetween(-8, 8)}deg`);
