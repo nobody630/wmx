@@ -1834,7 +1834,7 @@
       </div>
     </div>
 
-    <audio id="bgm" preload="auto"></audio>
+    <audio id="bgm" preload="metadata" crossorigin="anonymous"></audio></audio>
 
     <script>
       const CONFIG = {
@@ -1977,7 +1977,7 @@
       const preloadedImages = new Set();
       const preloadQueue = [];
       let preloadActive = false;
-      const MAX_CONCURRENT_PRELOADS = 2; // 手机端减少并发数量
+      const MAX_CONCURRENT_PRELOADS = 3; // 增加并发数量
       let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       let isSlowConnection = false;
 
@@ -1994,9 +1994,8 @@
 
       function preloadAllImages() {
         checkNetworkStatus();
-        // 手机端只预加载前 5 张，后续按需加载
-        const preloadCount = isMobile ? Math.min(5, slides.length) : slides.length;
-        for (let i = 0; i < preloadCount; i++) {
+        // 预加载所有 23 张图片
+        for (let i = 0; i < slides.length; i++) {
           preloadQueue.push({ src: slides[i].img, index: i });
         }
         processPreloadQueue();
@@ -2164,6 +2163,7 @@
         audio.loop = true;
         audio.currentTime = 0;
         audio.volume = 0;
+        audio.bufferSize = 4096; // 增加缓冲区大小
 
         try {
           await audio.play();
@@ -2177,6 +2177,30 @@
 
         await fadeVolume(audio, 0, targetVol, MUSIC_CROSSFADE_MS, fadeId);
         return fadeId === musicFadeId;
+      }
+
+      // 优化音乐播放的辅助函数
+      function optimizeAudioPlayback() {
+        const audio = els.bgm;
+        // 设置更好的音频属性
+        audio.crossOrigin = "anonymous";
+        audio.preload = "auto";
+        
+        // 添加缓冲事件监听
+        audio.addEventListener("waiting", () => {
+          console.log("音频正在缓冲...");
+        });
+        
+        audio.addEventListener("canplaythrough", () => {
+          console.log("音频缓冲完成，可以流畅播放");
+        });
+        
+        audio.addEventListener("stalled", () => {
+          console.log("音频播放中断，正在重试...");
+          if (!audio.paused) {
+            audio.play().catch(() => {});
+          }
+        });
       }
 
       function showToast(message) {
@@ -3051,6 +3075,7 @@
       (function init() {
         initLock();
         initMusicControl();
+        optimizeAudioPlayback(); // 优化音乐播放
         initCandleInteraction();
         initWishUI();
         initLetterUI();
@@ -3060,7 +3085,10 @@
         } catch {}
         setStep("lock");
         if (slides.length > 0) {
-          preloadAllImages();
+          // 延迟预加载，让音乐先缓冲
+          setTimeout(() => {
+            preloadAllImages();
+          }, 500);
         }
       })();
     </script>
