@@ -1676,10 +1676,10 @@
 
       /* ========== 手机端响应式设计 ========== */
       @media (max-width: 768px) {
-        /* 爱心照片 - 手机端优化 */
+        /* 爱心照片 - 手机端更紧凑 */
         .polaroid {
-          width: min(100px, 22vw);
-          padding: 6px 6px 18px 6px;
+          width: min(80px, 18vw);
+          padding: 5px 5px 14px 5px;
         }
 
         /* 照片墙 - 手机端优化 */
@@ -1697,50 +1697,50 @@
           height: 90px;
         }
 
-        /* 蛋糕场景 - 手机端优化 */
+        /* 蛋糕场景 - 手机端优化，确保完全显示 */
         .cakeScene.active {
-          padding: 16px 12px 20px;
-          gap: 12px;
+          padding: 14px 10px 18px;
+          gap: 10px;
         }
 
         .cakeWrap {
-          padding: 12px 4px 4px;
+          padding: 10px 2px 2px;
         }
 
         .cake {
-          width: min(320px, 94vw);
-          height: 280px;
+          width: min(280px, 90vw);
+          height: 240px;
         }
 
         .age-sign {
-          bottom: 260px;
-          font-size: 36px;
+          bottom: 220px;
+          font-size: 32px;
         }
 
         .age-sign::after {
-          bottom: -12px;
-          height: 16px;
+          bottom: -10px;
+          height: 14px;
         }
 
         .cake-final-words {
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.6;
         }
 
         .sceneTop h2 {
-          font-size: 20px;
+          font-size: 18px;
         }
 
         .sceneTop p {
-          font-size: 13px;
+          font-size: 12px;
         }
       }
 
       @media (max-width: 480px) {
-        /* 小屏手机进一步优化 */
+        /* 小屏手机进一步优化，更紧凑 */
         .polaroid {
-          width: min(80px, 20vw);
-          padding: 5px 5px 14px 5px;
+          width: min(65px, 16vw);
+          padding: 4px 4px 12px 4px;
         }
 
         .wallGrid {
@@ -1753,17 +1753,17 @@
         }
 
         .cake {
-          width: min(280px, 96vw);
-          height: 240px;
+          width: min(240px, 92vw);
+          height: 200px;
         }
 
         .age-sign {
-          bottom: 220px;
-          font-size: 28px;
+          bottom: 180px;
+          font-size: 24px;
         }
 
         .cake-final-words {
-          font-size: 13px;
+          font-size: 12px;
         }
       }
     </style>
@@ -2689,9 +2689,17 @@
         // Generate heart shape coordinates for 23 photos - constrained to fit in the pile area
         const heartCoords = [];
         const n = 23;
-        // 根据屏幕宽度调整缩放比例，手机端更小
+        // 根据屏幕宽度调整缩放比例，手机端更紧凑
         const isMobileScreen = window.innerWidth <= 768;
-        const scaleBase = isMobileScreen ? 10 : 15; // 手机端用10，电脑端用15
+        const isSmallMobile = window.innerWidth <= 480;
+        let scaleBase;
+        if (isSmallMobile) {
+          scaleBase = 7; // 小屏手机用7，非常紧凑
+        } else if (isMobileScreen) {
+          scaleBase = 9; // 普通手机用9，比较紧凑
+        } else {
+          scaleBase = 15; // 电脑端保持15
+        }
         
         for (let i = 0; i < n; i++) {
           const t = (i / n) * 2 * Math.PI;
@@ -2714,9 +2722,17 @@
             x = heartCoords[i].x;
             y = heartCoords[i].y;
           } else {
-            // 手机端随机范围更小
-            x = isMobileScreen ? randomBetween(-60, 60) : randomBetween(-80, 80);
-            y = isMobileScreen ? randomBetween(-45, 30) : randomBetween(-60, 40);
+            // 手机端随机范围更小，更紧凑
+            if (isSmallMobile) {
+              x = randomBetween(-40, 40);
+              y = randomBetween(-30, 20);
+            } else if (isMobileScreen) {
+              x = randomBetween(-50, 50);
+              y = randomBetween(-40, 25);
+            } else {
+              x = randomBetween(-80, 80);
+              y = randomBetween(-60, 40);
+            }
           }
           
           polaroid.style.setProperty("--r", `${randomBetween(-8, 8)}deg`);
