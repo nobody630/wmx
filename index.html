@@ -1678,8 +1678,8 @@
       @media (max-width: 768px) {
         /* 爱心照片 - 手机端更紧凑 */
         .polaroid {
-          width: min(80px, 18vw);
-          padding: 5px 5px 14px 5px;
+          width: min(80px, 18vw) !important;
+          padding: 5px 5px 14px 5px !important;
         }
 
         /* 照片墙 - 手机端优化 */
@@ -1708,13 +1708,13 @@
         }
 
         .cake {
-          width: min(280px, 90vw);
-          height: 240px;
+          width: min(280px, 90vw) !important;
+          height: 240px !important;
         }
 
         .age-sign {
-          bottom: 220px;
-          font-size: 32px;
+          bottom: 220px !important;
+          font-size: 32px !important;
         }
 
         .age-sign::after {
@@ -1739,8 +1739,8 @@
       @media (max-width: 480px) {
         /* 小屏手机进一步优化，更紧凑 */
         .polaroid {
-          width: min(65px, 16vw);
-          padding: 4px 4px 12px 4px;
+          width: min(65px, 16vw) !important;
+          padding: 4px 4px 12px 4px !important;
         }
 
         .wallGrid {
@@ -1753,13 +1753,13 @@
         }
 
         .cake {
-          width: min(240px, 92vw);
-          height: 200px;
+          width: min(240px, 92vw) !important;
+          height: 200px !important;
         }
 
         .age-sign {
-          bottom: 180px;
-          font-size: 24px;
+          bottom: 180px !important;
+          font-size: 24px !important;
         }
 
         .cake-final-words {
@@ -2345,6 +2345,29 @@
         els.slidePanel.style.display = step === "slides" ? "block" : "none";
         els.summaryPanel.classList.toggle("active", step === "summary");
         els.cakePanel.classList.toggle("active", step === "cake");
+        
+        // 手机端动态调整蛋糕大小（双重保险）
+        if (step === "cake") {
+          const cake = document.querySelector(".cake");
+          const ageSign = document.querySelector(".age-sign");
+          if (cake && ageSign) {
+            const isSmallMobile = window.innerWidth <= 480;
+            const isMobileScreen = window.innerWidth <= 768;
+            
+            if (isSmallMobile) {
+              cake.style.width = "min(240px, 92vw)";
+              cake.style.height = "200px";
+              ageSign.style.bottom = "180px";
+              ageSign.style.fontSize = "24px";
+            } else if (isMobileScreen) {
+              cake.style.width = "min(280px, 90vw)";
+              cake.style.height = "240px";
+              ageSign.style.bottom = "220px";
+              ageSign.style.fontSize = "32px";
+            }
+          }
+        }
+        
         if (step === "cake") {
           renderWishMemory();
         }
@@ -2739,6 +2762,15 @@
           polaroid.style.setProperty("--x", `${x}px`);
           polaroid.style.setProperty("--y", `${y}px`);
           polaroid.style.zIndex = String(10 + i);
+
+          // 手机端动态调整照片大小（双重保险）
+          if (isSmallMobile) {
+            polaroid.style.width = "min(65px, 16vw)";
+            polaroid.style.padding = "4px 4px 12px 4px";
+          } else if (isMobileScreen) {
+            polaroid.style.width = "min(80px, 18vw)";
+            polaroid.style.padding = "5px 5px 14px 5px";
+          }
 
           const img = document.createElement("img");
           img.src = s.img;
